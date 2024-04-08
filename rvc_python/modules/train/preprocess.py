@@ -134,6 +134,20 @@ class PreProcess:
         except:
             println("Fail. %s" % traceback.format_exc())
 
+    def pipeline_mp_file_list(self, file_paths, n_p):
+        try:
+            infos = [(file_path, idx) for idx, file_path in enumerate(sorted(file_paths))]
+            ps = []
+            for i in range(n_p):
+                p = multiprocessing.Process(
+                    target=self.pipeline_mp, args=(infos[i::n_p],)
+                )
+                ps.append(p)
+                p.start()
+            for i in range(n_p):
+                ps[i].join()
+        except:
+            print("Fail. %s" % traceback.format_exc())
 
 def preprocess_trainset(inp_root, sr, n_p, exp_dir, per):
     pp = PreProcess(sr, exp_dir, per)
@@ -142,6 +156,11 @@ def preprocess_trainset(inp_root, sr, n_p, exp_dir, per):
     pp.pipeline_mp_inp_dir(inp_root, n_p)
     println("end preprocess")
 
+def preprocess_trainset_files(file_paths, sr, n_p, exp_dir, per = 3.0):
+    pp = PreProcess(sr, exp_dir, per)
+    print("start preprocess")
+    pp.pipeline_mp_file_list(file_paths, n_p)
+    print("end preprocess")
 
 if __name__ == "__main__":
     preprocess_trainset(inp_root, sr, n_p, exp_dir, per)
