@@ -38,7 +38,7 @@ class FeatureInput(object):
             if hasattr(self, "model_rmvpe") == False:
                 from rvc_python.lib.rmvpe import RMVPE
 
-                print("Loading rmvpe model")
+                # print("Loading rmvpe model")
                 self.model_rmvpe = RMVPE(
                     "assets/rmvpe/rmvpe.pt", is_half=False, device="cuda"
                 )
