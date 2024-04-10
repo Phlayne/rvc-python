@@ -298,9 +298,11 @@ def get_hparams(init=True):
 
     args = parser.parse_args()
     name = args.experiment_dir
-    experiment_dir = os.path.join("./logs", args.experiment_dir)
+    # experiment_dir = os.path.join("./logs", args.experiment_dir)
+    experiment_dir = args.experiment_dir
 
-    config_save_path = os.path.join(experiment_dir, "config.json")
+    # config_save_path = os.path.join(experiment_dir, "config.json")
+    config_save_path = './default_config.json'
     with open(config_save_path, "r") as f:
         config = json.load(f)
 

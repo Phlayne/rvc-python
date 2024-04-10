@@ -1,18 +1,9 @@
-import multiprocessing
-import os
 import sys
 
 from scipy import signal
 
-now_dir = os.getcwd()
-sys.path.append(now_dir)
-print(sys.argv)
-inp_root = sys.argv[1]
-sr = int(sys.argv[2])
-n_p = int(sys.argv[3])
-exp_dir = sys.argv[4]
-noparallel = sys.argv[5] == "True"
-per = float(sys.argv[6])
+# now_dir = os.getcwd()
+# sys.path.append(now_dir)
 import multiprocessing
 import os
 import traceback
@@ -25,19 +16,19 @@ from rvc_python.lib.audio import load_audio
 from rvc_python.lib.slicer2 import Slicer
 
 mutex = multiprocessing.Lock()
-f = open("%s/preprocess.log" % exp_dir, "a+")
+f = None
 
-
-def println(strr):
+def println(strr, p = True):
     mutex.acquire()
-    print(strr)
+    if p:
+        print(strr)
     f.write("%s\n" % strr)
     f.flush()
     mutex.release()
 
 
 class PreProcess:
-    def __init__(self, sr, exp_dir, per=3.0):
+    def __init__(self, sr, exp_dir, per=3.0, tqdm_queue=None):
         self.slicer = Slicer(
             sr=sr,
             threshold=-42,
@@ -59,6 +50,7 @@ class PreProcess:
         os.makedirs(self.exp_dir, exist_ok=True)
         os.makedirs(self.gt_wavs_dir, exist_ok=True)
         os.makedirs(self.wavs16k_dir, exist_ok=True)
+        self.tqdm_queue = tqdm_queue
 
     def norm_write(self, tmp_audio, idx0, idx1):
         tmp_max = np.abs(tmp_audio).max()
@@ -104,7 +96,10 @@ class PreProcess:
                         idx1 += 1
                         break
                 self.norm_write(tmp_audio, idx0, idx1)
-            println("%s->Suc." % path)
+            queue_exists = self.tqdm_queue is not None
+            println("%s->Suc." % path, p = not queue_exists)
+            if queue_exists:
+                self.tqdm_queue.put(1)
         except:
             println("%s->%s" % (path, traceback.format_exc()))
 
@@ -146,21 +141,49 @@ class PreProcess:
                 p.start()
             for i in range(n_p):
                 ps[i].join()
+            if hasattr(self, 'pbar'):
+                self.pbar.close()
         except:
-            print("Fail. %s" % traceback.format_exc())
+            println("Fail. %s" % traceback.format_exc())
 
 def preprocess_trainset(inp_root, sr, n_p, exp_dir, per):
     pp = PreProcess(sr, exp_dir, per)
-    println("start preprocess")
     println(sys.argv)
     pp.pipeline_mp_inp_dir(inp_root, n_p)
-    println("end preprocess")
 
-def preprocess_trainset_files(file_paths, sr, n_p, exp_dir, per = 3.0):
-    pp = PreProcess(sr, exp_dir, per)
-    print("start preprocess")
+def preprocess_trainset_files(file_paths, sr, n_p, exp_dir, per, tqdm_text = None):
+    tqdm_queue = None
+    if tqdm_text is not None:
+        tqdm_queue = multiprocessing.Queue()
+        listener_process = multiprocessing.Process(target=listener, args=(tqdm_queue, tqdm_text))
+        listener_process.start()
+
+    pp = PreProcess(sr, exp_dir, per, tqdm_queue)
     pp.pipeline_mp_file_list(file_paths, n_p)
-    print("end preprocess")
+
+    if tqdm_queue is not None:
+        tqdm_queue.put(None)
+        listener_process.join()
+
+def listener(queue, tqdm_text):
+    from tqdm import tqdm
+    pbar = tqdm(desc = tqdm_text)
+    for _ in iter(queue.get, None):
+        pbar.update()
+    pbar.close()
+
+
+def init_log(exp_dir):
+    global f
+    f = open("%s/preprocess.log" % exp_dir, "a+")
 
 if __name__ == "__main__":
-    preprocess_trainset(inp_root, sr, n_p, exp_dir, per)
+    file_paths = sys.argv[1].split(";")
+    # inp_root = sys.argv[1]
+    sr = int(sys.argv[2])
+    n_p = int(sys.argv[3])
+    exp_dir = sys.argv[4]
+    noparallel = sys.argv[5] == "True"
+    per = float(sys.argv[6])
+    init_log(exp_dir)
+    preprocess_trainset_files(file_paths, sr, n_p, exp_dir, per)
