@@ -180,7 +180,7 @@ def extract_small_model(path, name, sr, if_f0, info, version):
         opt["version"] = version
         opt["sr"] = sr
         opt["f0"] = int(if_f0)
-        torch.save(opt, "assets/weights/%s.pth" % name)
+        torch.save(opt, "data/%s.pth" % name)
         return "Success."
     except:
         return traceback.format_exc()
@@ -192,7 +192,7 @@ def change_info(path, info, name):
         ckpt["info"] = info
         if name == "":
             name = os.path.basename(path)
-        torch.save(ckpt, "assets/weights/%s" % name)
+        torch.save(ckpt, "data/%s" % name)
         return "Success."
     except:
         return traceback.format_exc()
@@ -251,7 +251,7 @@ def merge(path1, path2, alpha1, sr, f0, info, name, version):
         opt["f0"] = 1 if f0 else 0 # replaced if f0 `== i18n("是") else` by `if f0 else` because it was just checking if it was equal to "Yes".
         opt["version"] = version
         opt["info"] = info
-        torch.save(opt, "assets/weights/%s.pth" % name)
+        torch.save(opt, "data/%s.pth" % name)
         return "Success."
     except:
         return traceback.format_exc()
